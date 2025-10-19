@@ -92,6 +92,20 @@ public class InterviewService {
     }
 
     /**
+     * Retrieves a single interview by its ID.
+     *
+     * @param interviewId The ID of the interview to fetch.
+     * @return An {@link InterviewResponseDto} for the found interview.
+     * @throws RuntimeException if the interview is not found.
+     */
+    public InterviewResponseDto getInterviewById(Long interviewId) {
+        log.info("Fetching interview details for ID: {}", interviewId);
+        Interview interview = interviewRepository.findById(interviewId)
+                .orElseThrow(() -> new RuntimeException("Interview not found with ID: " + interviewId));
+        return mapToDto(interview);
+    }
+
+    /**
      * Private helper method to map an Interview entity to a safe response DTO.
      * This prevents sensitive data (like the user's password) from being exposed in API responses.
      *

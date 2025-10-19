@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+
 /**
  * REST controller for handling all API endpoints related to interviews.
  * All endpoints under this controller require user authentication.
@@ -64,6 +65,24 @@ public class InterviewController {
         } catch (RuntimeException e) {
             log.error("Could not generate questions for interview ID {}: {}", interviewId, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieves the details of a single interview by its ID.
+     *
+     * @param interviewId The ID of the interview to retrieve.
+     * @return A {@link ResponseEntity} with the interview details.
+     */
+    @GetMapping("/{interviewId}")
+    public ResponseEntity<InterviewResponseDto> getInterviewById(@PathVariable Long interviewId) {
+        log.info("Received request to get interview details for ID: {}", interviewId);
+        try {
+            InterviewResponseDto interviewDto = interviewService.getInterviewById(interviewId);
+            return ResponseEntity.ok(interviewDto);
+        } catch (RuntimeException e) {
+            log.error("Could not find interview with ID {}: {}", interviewId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 }

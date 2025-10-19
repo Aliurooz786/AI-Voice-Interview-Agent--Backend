@@ -37,11 +37,9 @@ public class GeminiService {
     public String generateQuestions(String jobPosition, String jobDescription) {
         log.info("Attempting to generate questions using proven RestTemplate config for: {}", jobPosition);
 
-        // --- AAPKE WORKING ENDPOINT KA ISTEMAAL KAR RAHE HAIN ---
-        // Yahan aapka working model name 'gemini-2.0-flash' daala gaya hai.
+
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
 
-        // A detailed prompt designed to elicit a specific JSON output format.
         String prompt = String.format(
                 "You are a world-class hiring manager and senior technical architect at a top tech company. " +
                         "Your goal is to create insightful, non-trivial interview questions that accurately assess a candidate's real-world problem-solving abilities, not just their memorization of facts. " +
@@ -67,7 +65,6 @@ public class GeminiService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            // Execute the HTTP POST request.
             ResponseEntity<String> responseEntity = restTemplate.exchange(
                     endpoint,
                     HttpMethod.POST,
@@ -78,7 +75,6 @@ public class GeminiService {
             String response = responseEntity.getBody();
             log.debug("Gemini raw response: {}", response);
 
-            // Parse the JSON response to extract the generated text.
             JsonNode root = objectMapper.readTree(response);
             JsonNode textNode = root.path("candidates").get(0).path("content").path("parts").get(0).path("text");
 

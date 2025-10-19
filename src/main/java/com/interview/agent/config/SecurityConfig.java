@@ -15,16 +15,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Main configuration class for Spring Security.
- * This class sets up the security filter chain, password encoding,
- * and the authentication manager.
+ * Sets up the security filter chain, password encoding, and authentication manager.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     /**
-     * Defines the password encoder bean.
-     * We use BCrypt, which is a strong, industry-standard hashing algorithm for passwords.
+     * Defines the password encoder bean using BCrypt.
      *
      * @return The PasswordEncoder instance.
      */
@@ -34,8 +32,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Exposes the AuthenticationManager as a Bean.
-     * This is required by the UserService to process authentication requests.
+     * Exposes the AuthenticationManager as a Bean, required for authentication processing.
      *
      * @param config The authentication configuration.
      * @return The AuthenticationManager instance.
@@ -48,7 +45,8 @@ public class SecurityConfig {
 
     /**
      * Configures the main security filter chain for the application.
-     * This is the central point for defining all security rules.
+     * Defines security rules like CSRF handling, request authorization, session management,
+     * and JWT filter integration.
      *
      * @param http          The HttpSecurity object to configure.
      * @param jwtAuthFilter The custom JWT filter to be added to the chain.
@@ -58,20 +56,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
-                // 1. Disable CSRF (Cross-Site Request Forgery) protection, as we are using stateless JWT authentication.
-                .csrf(csrf -> csrf.disable())
-
-                // 2. Define authorization rules for HTTP requests.
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for stateless JWT authentication
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Publicly allow all endpoints under /api/auth/ (e.g., register, login).
-                        .anyRequest().authenticated() // All other requests must be authenticated.
+                        .requestMatchers("/api/auth/**").permitAll() // Allow public access to auth endpoints
+                        .anyRequest().authenticated() // Require authentication for all other requests
                 )
-
-                // 3. Configure session management to be stateless. The server will not create or maintain any sessions.
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 4. Add our custom JWT authentication filter before the standard username/password authentication filter.
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Add JWT filter
 
         return http.build();
     }
