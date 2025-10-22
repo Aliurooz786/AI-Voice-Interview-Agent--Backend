@@ -3,6 +3,7 @@ package com.interview.agent.service;
 import com.interview.agent.dto.InterviewDto;
 import com.interview.agent.dto.InterviewResponseDto;
 import com.interview.agent.dto.UserResponseDto;
+import com.interview.agent.enums.InterviewType;
 import com.interview.agent.model.Interview;
 import com.interview.agent.model.User;
 import com.interview.agent.repository.InterviewRepository;
@@ -14,9 +15,12 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
- * Service class for handling business logic related to interviews.
- * This includes creating new interviews and generating AI-powered questions for them.
+ * Service class handling business logic for interviews.
+ * Includes creation, question generation via Gemini, and retrieval.
  */
 @Service
 public class InterviewService {
@@ -35,79 +39,115 @@ public class InterviewService {
     }
 
     /**
-     * Creates a new interview record for the currently authenticated user.
+     * Creates a new interview, generates AI questions based on duration,
+     * and saves the complete record in a single transaction.
      *
-     * @param interviewDto DTO containing the job position and description.
-     * @param userEmail The email of the user creating the interview.
-     * @return An {@link InterviewResponseDto} representing the newly created interview.
+     * @param interviewDto DTO containing job position, description, and duration.
+     * @param userEmail    Email of the authenticated user creating the interview.
+     * @return An {@link InterviewResponseDto} representing the created interview with questions.
+     * @throws UsernameNotFoundException if the user is not found.
+     * @throws RuntimeException          if AI question generation fails.
      */
-    @Transactional
-    public InterviewResponseDto createInterview(InterviewDto interviewDto, String userEmail) {
-        log.info("Creating a new interview for user: {}", userEmail);
+    @Transactional // Ensures atomicity: either everything saves, or nothing does.
+    public InterviewResponseDto createInterviewAndGenerateQuestions(InterviewDto interviewDto, String userEmail) {
+        log.info("Processing combined request: Create interview and generate questions for user: {}", userEmail);
 
+        // 1. Find the associated user
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + userEmail));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
 
+        // 2. Determine Interview Type from duration
+        InterviewType type = determineInterviewType(interviewDto.getDuration());
+
+        // 3. Create the initial Interview entity
         Interview newInterview = new Interview();
         newInterview.setJobPosition(interviewDto.getJobPosition());
         newInterview.setJobDescription(interviewDto.getJobDescription());
+        newInterview.setDuration(interviewDto.getDuration()); // Save duration
+        newInterview.setInterviewType(type); // Save type
         newInterview.setUser(user);
 
-        Interview savedInterview = interviewRepository.save(newInterview);
-        log.info("Successfully saved new interview with ID: {} for user: {}", savedInterview.getId(), userEmail);
 
-        return mapToDto(savedInterview);
+        // 4. Generate questions using GeminiService
+        try {
+            log.info("Calling GeminiService to generate questions for job: {}, duration: {}",
+                    newInterview.getJobPosition(), newInterview.getDuration());
+            String generatedJson = geminiService.generateQuestions(
+                    newInterview.getJobPosition(),
+                    newInterview.getJobDescription(),
+                    newInterview.getDuration() // Pass duration to GeminiService
+            );
+            newInterview.setGeneratedQuestions(generatedJson); // Set generated questions
+            log.info("Successfully received questions JSON from Gemini.");
+
+        } catch (RuntimeException e) {
+            log.error("Failed critically during question generation for user {}. Rolling back transaction.", userEmail, e);
+            // Re-throw the exception to ensure the transaction is rolled back
+            throw new RuntimeException("Failed to generate interview questions via AI: " + e.getMessage(), e);
+        }
+
+        // 5. Save the complete interview entity (including questions)
+        Interview finalInterview = interviewRepository.save(newInterview);
+        log.info("Successfully saved complete interview with ID: {}", finalInterview.getId());
+
+        // 6. Map to DTO and return
+        return mapToDto(finalInterview);
     }
 
     /**
-     * Generates interview questions using the Gemini AI service for a specific interview
-     * and saves them to the database.
+     * Retrieves all interviews created by a specific user.
      *
-     * @param interviewId The ID of the interview to generate questions for.
-     * @return A raw JSON string containing the generated questions.
-     * @throws RuntimeException if the interview with the given ID is not found.
+     * @param userEmail The email of the user whose interviews are to be fetched.
+     * @return A List of {@link InterviewResponseDto} for the user's interviews.
      */
-    @Transactional
-    public String generateAndSaveQuestions(Long interviewId) {
-        log.info("Generating questions for interview ID: {}", interviewId);
+    @Transactional(readOnly = true) // Use readOnly for read operations for performance
+    public List<InterviewResponseDto> getInterviewsByUser(String userEmail) {
+        log.info("Fetching interviews for user: {}", userEmail);
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
 
-        // Step 1: Find the interview from the database.
-        Interview interview = interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new RuntimeException("Interview not found with ID: " + interviewId));
+        List<Interview> interviews = interviewRepository.findByUserId(user.getId());
+        log.info("Found {} interviews for user: {}", interviews.size(), userEmail);
 
-        // Step 2: Call the Gemini Service to generate questions based on job details.
-        String generatedJson = geminiService.generateQuestions(
-                interview.getJobPosition(),
-                interview.getJobDescription()
-        );
-
-        // Step 3: Set the generated JSON string on the interview entity.
-        interview.setGeneratedQuestions(generatedJson);
-
-        // Step 4: Save the updated interview back to the database.
-        interviewRepository.save(interview);
-        log.info("Successfully generated and saved questions for interview ID: {}", interviewId);
-
-        return generatedJson;
+        // Convert List<Interview> to List<InterviewResponseDto> using the updated mapToDto
+        return interviews.stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Retrieves a single interview by its ID.
+     * Retrieves a single interview by its ID, including generated questions.
      *
      * @param interviewId The ID of the interview to fetch.
      * @return An {@link InterviewResponseDto} for the found interview.
      * @throws RuntimeException if the interview is not found.
      */
+    @Transactional(readOnly = true)
     public InterviewResponseDto getInterviewById(Long interviewId) {
         log.info("Fetching interview details for ID: {}", interviewId);
         Interview interview = interviewRepository.findById(interviewId)
                 .orElseThrow(() -> new RuntimeException("Interview not found with ID: " + interviewId));
+        log.debug("Found interview: {}", interview); // Log fetched interview data
         return mapToDto(interview);
     }
 
     /**
+     * Private helper to determine InterviewType based on duration string.
+     *
+     * @param duration The duration string (e.g., "5 min").
+     * @return The corresponding {@link InterviewType}.
+     */
+    private InterviewType determineInterviewType(String duration) {
+        if ("5 min".equalsIgnoreCase(duration)) {
+            return InterviewType.MOCK;
+        }
+        // Consider other durations or default to FULL
+        return InterviewType.FULL;
+    }
+
+    /**
      * Private helper method to map an Interview entity to a safe response DTO.
-     * This prevents sensitive data (like the user's password) from being exposed in API responses.
+     * Includes all relevant fields for the frontend.
      *
      * @param interview The Interview entity to map.
      * @return The mapped {@link InterviewResponseDto}.
@@ -118,14 +158,19 @@ public class InterviewService {
         dto.setJobPosition(interview.getJobPosition());
         dto.setJobDescription(interview.getJobDescription());
         dto.setCreatedAt(interview.getCreatedAt());
+        dto.setDuration(interview.getDuration());           // Map duration
+        dto.setInterviewType(interview.getInterviewType()); // Map type
+        dto.setGeneratedQuestions(interview.getGeneratedQuestions()); // Map questions
 
-        // Map the associated User entity to a safe UserResponseDto
+        // Map associated User to safe DTO
         UserResponseDto userDto = new UserResponseDto();
-        userDto.setId(interview.getUser().getId());
-        userDto.setFullName(interview.getUser().getFullName());
-        userDto.setEmail(interview.getUser().getEmail());
-
+        if (interview.getUser() != null) { // Check if user is loaded (might be lazy)
+            userDto.setId(interview.getUser().getId());
+            userDto.setFullName(interview.getUser().getFullName());
+            userDto.setEmail(interview.getUser().getEmail());
+        }
         dto.setUser(userDto);
+
         return dto;
     }
 }

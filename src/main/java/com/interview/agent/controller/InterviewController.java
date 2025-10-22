@@ -11,11 +11,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.userdetails.UsernameNotFoundException; // Import for exception handling
 
+import java.util.List; // Import for List type
 
 /**
- * REST controller for handling all API endpoints related to interviews.
- * All endpoints under this controller require user authentication.
+ * REST controller for handling interview-related API endpoints.
+ * Requires user authentication for all endpoints.
  */
 @RestController
 @RequestMapping("/api/interviews")
@@ -31,58 +33,73 @@ public class InterviewController {
     }
 
     /**
-     * Creates a new interview based on the provided job details.
-     * This endpoint is secure and can only be accessed by an authenticated user.
+     * Creates a new interview record AND generates AI questions in one single step.
+     * Accessible only by authenticated users.
      *
-     * @param interviewDto DTO containing the job position and description.
-     * @return A {@link ResponseEntity} with the created interview details and a 201 CREATED status.
+     * @param interviewDto DTO containing job position, description, and duration.
+     * @return ResponseEntity with created interview details (including questions) and HTTP status 201 (Created),
+     * or an error status (401, 500) if creation or question generation fails.
      */
     @PostMapping
-    public ResponseEntity<InterviewResponseDto> createInterview(@RequestBody InterviewDto interviewDto) {
-        // Get the email of the currently authenticated user from the security context.
+    public ResponseEntity<?> createInterviewAndGenerateQuestions(@RequestBody InterviewDto interviewDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
-        log.info("Received request to create a new interview for user: {}", userEmail);
-
-        InterviewResponseDto createdInterviewDto = interviewService.createInterview(interviewDto, userEmail);
-
-        return new ResponseEntity<>(createdInterviewDto, HttpStatus.CREATED);
+        log.info("Request received to create interview and generate questions for user: {}", userEmail);
+        try {
+            // Call the new combined service method
+            InterviewResponseDto createdInterviewDto = interviewService.createInterviewAndGenerateQuestions(interviewDto, userEmail);
+            return new ResponseEntity<>(createdInterviewDto, HttpStatus.CREATED);
+        } catch (UsernameNotFoundException e) {
+            log.error("User not found during interview creation: {}", userEmail, e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User authentication error.");
+        } catch (RuntimeException e) { // Catches exceptions from service (e.g., Gemini failure)
+            log.error("Failed to create interview or generate questions for user {}: {}", userEmail, e.getMessage(), e);
+            // Return a more informative error message from the exception
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process interview creation: " + e.getMessage());
+        }
     }
 
+    // REMOVED: The separate POST /{interviewId}/generate-questions endpoint is no longer needed.
+
     /**
-     * Triggers the generation of AI-powered questions for a specific interview.
-     * The generated questions are saved to the interview record in the database.
+     * Retrieves the details of a single interview by its ID, including generated questions.
      *
-     * @param interviewId The ID of the interview to generate questions for.
-     * @return A {@link ResponseEntity} containing the raw JSON string of generated questions.
+     * @param interviewId The ID of the interview to retrieve.
+     * @return ResponseEntity containing the interview details (DTO) or a 404 error if not found.
      */
-    @PostMapping("/{interviewId}/generate-questions")
-    public ResponseEntity<String> generateQuestions(@PathVariable Long interviewId) {
-        log.info("Received request to generate AI questions for interview ID: {}", interviewId);
+    @GetMapping("/{interviewId}")
+    public ResponseEntity<InterviewResponseDto> getInterviewById(@PathVariable Long interviewId) {
+        log.info("Request received to get details for interview ID: {}", interviewId);
         try {
-            String questionsJson = interviewService.generateAndSaveQuestions(interviewId);
-            return ResponseEntity.ok(questionsJson);
-        } catch (RuntimeException e) {
-            log.error("Could not generate questions for interview ID {}: {}", interviewId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            InterviewResponseDto interviewDto = interviewService.getInterviewById(interviewId);
+            return ResponseEntity.ok(interviewDto);
+        } catch (RuntimeException e) { // Catches InterviewNotFoundException from service
+            log.error("Error retrieving interview details for ID {}: {}", interviewId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // Return 404 without body for not found
         }
     }
 
     /**
-     * Retrieves the details of a single interview by its ID.
+     * Retrieves all interviews created by the currently authenticated user.
+     * Used for populating the user's dashboard.
      *
-     * @param interviewId The ID of the interview to retrieve.
-     * @return A {@link ResponseEntity} with the interview details.
+     * @return ResponseEntity containing a list of the user's interviews (DTOs) or an error status.
      */
-    @GetMapping("/{interviewId}")
-    public ResponseEntity<InterviewResponseDto> getInterviewById(@PathVariable Long interviewId) {
-        log.info("Received request to get interview details for ID: {}", interviewId);
+    @GetMapping
+    public ResponseEntity<List<InterviewResponseDto>> getUserInterviews() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication.getName();
+        log.info("Request received to get all interviews for user: {}", userEmail);
+
         try {
-            InterviewResponseDto interviewDto = interviewService.getInterviewById(interviewId);
-            return ResponseEntity.ok(interviewDto);
-        } catch (RuntimeException e) {
-            log.error("Could not find interview with ID {}: {}", interviewId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            List<InterviewResponseDto> interviews = interviewService.getInterviewsByUser(userEmail);
+            return ResponseEntity.ok(interviews);
+        } catch (UsernameNotFoundException e) {
+            log.error("Authenticated user not found while fetching interviews: {}", userEmail);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (Exception e) {
+            log.error("Unexpected error fetching interviews for user {}: {}", userEmail, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

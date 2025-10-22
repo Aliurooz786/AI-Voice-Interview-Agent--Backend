@@ -2,6 +2,7 @@ package com.interview.agent.service;
 
 import com.interview.agent.dto.LoginDto;
 import com.interview.agent.dto.UserDto;
+import com.interview.agent.dto.UserResponseDto;
 import com.interview.agent.model.User;
 import com.interview.agent.repository.UserRepository;
 import com.interview.agent.util.JwtUtil;
@@ -102,5 +103,34 @@ public class UserService implements UserDetailsService {
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
         );
+    }
+
+
+    /**
+     * Retrieves the non-sensitive details of a user by their email address.
+     * Used to fetch profile information for the currently logged-in user.
+     *
+     * @param email The email address of the user to fetch.
+     * @return A {@link UserResponseDto} containing the user's ID, full name, and email.
+     * @throws UsernameNotFoundException if no user is found with the given email.
+     */
+    public UserResponseDto getUserDetailsByEmail(String email) {
+        log.debug("Fetching user details for email: {}", email); // Changed log level to debug
+        // Find the user entity by email using the repository
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    // Log error before throwing exception
+                    log.error("User details requested for non-existent email: {}", email);
+                    return new UsernameNotFoundException("User not found with email: " + email);
+                });
+
+        // Map the found User entity to the UserResponseDto (excludes password)
+        UserResponseDto userDto = new UserResponseDto();
+        userDto.setId(user.getId());
+        userDto.setFullName(user.getFullName());
+        userDto.setEmail(user.getEmail());
+
+        log.info("Successfully fetched user details for email: {}", email);
+        return userDto; // Return the DTO
     }
 }
