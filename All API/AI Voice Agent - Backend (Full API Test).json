@@ -1,0 +1,256 @@
+{
+	"info": {
+		"_postman_id": "b1b2c3d4-e5f6-7890-1234-a1b2c3d4e5f6",
+		"name": "AI Agent - Topic-Based Backend (v2)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"description": "Full test suite for the 'Topic-Based Agenda' backend (Auth & Interviews)"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"description": "User registration, login, and profile fetching.",
+			"item": [
+				{
+					"name": "AUTH: Register User (Optional)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registers a new user."
+					},
+					"response": []
+				},
+				{
+					"name": "AUTH: Login & Save Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"try {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+									"        console.log(\"JWT Token saved successfully!\");",
+									"    }",
+									"} catch (e) {",
+									"    console.error(\"Error parsing token:\", e);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"a.aliurooz786@gmail.com\",\n  \"password\": \"ePciaE@12\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Logs in a user and saves the returned JWT to a collection variable 'jwt_token'."
+					},
+					"response": []
+				},
+				{
+					"name": "AUTH: Get Current User Profile (/me)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Tests the secure endpoint to get the currently logged-in user's profile."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Interviews (Secure)",
+			"description": "Endpoints for managing interviews (require auth).",
+			"item": [
+				{
+					"name": "INTERVIEWS: Create Interview & Gen Topics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"try {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set(\"interview_id\", jsonData.id);",
+									"        console.log(\"Saved new interview ID:\", jsonData.id);",
+									"    }",
+									"} catch (e) {",
+									"    console.error(\"Error parsing interview ID:\", e);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jobPosition\": \"Postman Test (Topic Based)\",\n  \"jobDescription\": \"Test description for topic generation. Focus on Java and Spring Boot.\",\n  \"duration\": \"15 min\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/interviews",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"interviews"
+							]
+						},
+						"description": "Tests the combined endpoint to create an interview and generate topics."
+					},
+					"response": []
+				},
+				{
+					"name": "INTERVIEWS: Get All User Interviews",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/interviews",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"interviews"
+							]
+						},
+						"description": "Tests the endpoint to get the list of all interviews for the logged-in user."
+					},
+					"response": []
+				},
+				{
+					"name": "INTERVIEWS: Get Single Interview by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/interviews/{{interview_id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"interviews",
+								"{{interview_id}}"
+							]
+						},
+						"description": "Tests the endpoint to get details for a single interview using the ID saved from the create step."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "interview_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

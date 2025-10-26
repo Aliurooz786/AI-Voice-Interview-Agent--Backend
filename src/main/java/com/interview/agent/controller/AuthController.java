@@ -3,18 +3,18 @@ package com.interview.agent.controller;
 import com.interview.agent.dto.LoginDto;
 import com.interview.agent.dto.LoginResponseDto;
 import com.interview.agent.dto.UserDto;
-import com.interview.agent.dto.UserResponseDto; // Ensure this is imported
+import com.interview.agent.dto.UserResponseDto;
 import com.interview.agent.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication; // Ensure this is imported
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder; // Ensure this is imported
-import org.springframework.security.core.userdetails.UsernameNotFoundException; // Ensure this is imported
-import org.springframework.web.bind.annotation.GetMapping; // Ensure this is imported
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -94,29 +94,25 @@ public class AuthController {
      * @return ResponseEntity containing the {@link UserResponseDto} (200),
      * or an error status (401, 404, 500).
      */
-    @GetMapping("/me") // Endpoint for fetching current user profile
+    @GetMapping("/me")
     public ResponseEntity<?> getCurrentUserProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // Verify that the user is properly authenticated
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null || "anonymousUser".equals(authentication.getPrincipal())) {
             log.warn("Attempt to access /me endpoint without valid authentication.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
         }
 
-        String userEmail = authentication.getName(); // Get username (email) from security context
+        String userEmail = authentication.getName();
         log.info("Request received to get profile for authenticated user: {}", userEmail);
 
         try {
-            // Fetch user details using the service method
             UserResponseDto userProfile = userService.getUserDetailsByEmail(userEmail);
-            return ResponseEntity.ok(userProfile); // Return 200 OK with user profile DTO
+            return ResponseEntity.ok(userProfile);
         } catch (UsernameNotFoundException e) {
-            // This case indicates an inconsistency (authenticated user not in DB)
             log.error("CRITICAL: Authenticated user '{}' not found in database during profile fetch.", userEmail);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User profile data not found.");
         } catch (Exception e) {
-            // Catch any other unexpected errors during service call
             log.error("Unexpected error fetching profile for user {}: {}", userEmail, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while fetching user profile.");
         }

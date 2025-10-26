@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 /**
  * Data Transfer Object (DTO) for sending interview details in API responses.
- * This includes the interview specifics, generated questions, and safe user details.
+ * This includes the interview specifics, generated topics, and safe user details.
  */
 @Data
 public class InterviewResponseDto {
@@ -37,10 +37,11 @@ public class InterviewResponseDto {
     private InterviewType interviewType;
 
     /**
-     * The raw JSON string of AI-generated interview questions.
-     * Can be null if question generation failed.
+     * The raw JSON string of AI-generated interview TOPICS.
+     * (e.g., "[\"Java\", \"Spring Boot\", \"AWS\"]")
+     * Can be null if topic generation failed.
      */
-    private String generatedQuestions;
+    private String topicsJson; // <-- Renamed from generatedQuestions
 
     /**
      * The timestamp indicating when the interview record was created.

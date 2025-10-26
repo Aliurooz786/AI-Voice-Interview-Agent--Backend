@@ -11,9 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.userdetails.UsernameNotFoundException; // Import for exception handling
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.List; // Import for List type
+import java.util.List;
 
 /**
  * REST controller for handling interview-related API endpoints.
@@ -33,36 +33,33 @@ public class InterviewController {
     }
 
     /**
-     * Creates a new interview record AND generates AI questions in one single step.
+     * Creates a new interview record AND generates AI-powered TOPICS in one single step.
      * Accessible only by authenticated users.
      *
      * @param interviewDto DTO containing job position, description, and duration.
-     * @return ResponseEntity with created interview details (including questions) and HTTP status 201 (Created),
-     * or an error status (401, 500) if creation or question generation fails.
+     * @return ResponseEntity with created interview details (including topics) and HTTP status 201 (Created),
+     * or an error status (401, 500) if creation or topic generation fails.
      */
     @PostMapping
-    public ResponseEntity<?> createInterviewAndGenerateQuestions(@RequestBody InterviewDto interviewDto) {
+    public ResponseEntity<?> createInterviewAndGenerateTopics(@RequestBody InterviewDto interviewDto) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
-        log.info("Request received to create interview and generate questions for user: {}", userEmail);
+        log.info("Request received to create interview and generate TOPICS for user: {}", userEmail);
         try {
-            // Call the new combined service method
-            InterviewResponseDto createdInterviewDto = interviewService.createInterviewAndGenerateQuestions(interviewDto, userEmail);
+            // Call the updated service method
+            InterviewResponseDto createdInterviewDto = interviewService.createInterviewAndGenerateTopics(interviewDto, userEmail);
             return new ResponseEntity<>(createdInterviewDto, HttpStatus.CREATED);
         } catch (UsernameNotFoundException e) {
             log.error("User not found during interview creation: {}", userEmail, e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User authentication error.");
         } catch (RuntimeException e) { // Catches exceptions from service (e.g., Gemini failure)
-            log.error("Failed to create interview or generate questions for user {}: {}", userEmail, e.getMessage(), e);
-            // Return a more informative error message from the exception
+            log.error("Failed to create interview or generate TOPICS for user {}: {}", userEmail, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process interview creation: " + e.getMessage());
         }
     }
 
-    // REMOVED: The separate POST /{interviewId}/generate-questions endpoint is no longer needed.
-
     /**
-     * Retrieves the details of a single interview by its ID, including generated questions.
+     * Retrieves the details of a single interview by its ID, including generated topics.
      *
      * @param interviewId The ID of the interview to retrieve.
      * @return ResponseEntity containing the interview details (DTO) or a 404 error if not found.

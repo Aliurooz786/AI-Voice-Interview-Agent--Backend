@@ -115,8 +115,7 @@ public class UserService implements UserDetailsService {
      * @throws UsernameNotFoundException if no user is found with the given email.
      */
     public UserResponseDto getUserDetailsByEmail(String email) {
-        log.debug("Fetching user details for email: {}", email); // Changed log level to debug
-        // Find the user entity by email using the repository
+        log.debug("Fetching user details for email: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     // Log error before throwing exception
@@ -124,13 +123,12 @@ public class UserService implements UserDetailsService {
                     return new UsernameNotFoundException("User not found with email: " + email);
                 });
 
-        // Map the found User entity to the UserResponseDto (excludes password)
         UserResponseDto userDto = new UserResponseDto();
         userDto.setId(user.getId());
         userDto.setFullName(user.getFullName());
         userDto.setEmail(user.getEmail());
 
         log.info("Successfully fetched user details for email: {}", email);
-        return userDto; // Return the DTO
+        return userDto;
     }
 }
