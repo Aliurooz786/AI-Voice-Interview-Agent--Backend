@@ -15,7 +15,7 @@ public class UserDto {
     private String fullName;
 
     /**
-     * The desired email address for the new user. This will be used for login.
+     * The desired email address for the new user. This will be used for  login.
      */
     private String email;
 
