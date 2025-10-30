@@ -43,6 +43,18 @@ public class JwtUtil {
     }
 
     /**
+     * A generic public function to extract a specific claim from a token.
+     *
+     * @param token          The JWT token.
+     * @param claimsResolver A function to resolve the desired claim.
+     * @return The extracted claim.
+     */
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    /**
      * Generates a JWT token for a given user.
      *
      * @param userDetails The user details object containing username and authorities.
@@ -87,20 +99,7 @@ public class JwtUtil {
         }
     }
 
-    // --- Private Helper Methods ---
 
-    /**
-     * A generic function to extract a specific claim from a token.
-     * @param token The JWT token.
-     * @param claimsResolver A function to resolve the desired claim.
-     * @return The extracted claim.
-     */
-    private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    // Parses the JWT token to extract all claims.
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSignInKey())

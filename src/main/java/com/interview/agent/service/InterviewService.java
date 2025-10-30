@@ -75,12 +75,12 @@ public class InterviewService {
         // 4. Generate TOPICS using GeminiService
         try {
             log.info("Calling GeminiService to generate TOPICS for job: {}", newInterview.getJobPosition());
-            String topicsJson = geminiService.generateTopics( // <-- Changed to generateTopics
+            String topicsJson = geminiService.generateTopics(
                     newInterview.getJobPosition(),
                     newInterview.getJobDescription()
-                    // Duration is not needed for topic generation
+
             );
-            newInterview.setTopicsJson(topicsJson); // <-- Set topicsJson
+            newInterview.setTopicsJson(topicsJson);
             log.info("Successfully received topics JSON from Gemini.");
 
         } catch (RuntimeException e) {
@@ -88,11 +88,11 @@ public class InterviewService {
             throw new RuntimeException("Failed to generate interview topics via AI: " + e.getMessage(), e);
         }
 
-        // 5. Save the complete interview entity (including topics)
+
         Interview finalInterview = interviewRepository.save(newInterview);
         log.info("Successfully saved complete interview with ID: {}", finalInterview.getId());
 
-        // 6. Map to DTO and return
+
         return mapToDto(finalInterview);
     }
 
@@ -155,9 +155,8 @@ public class InterviewService {
         dto.setCreatedAt(interview.getCreatedAt());
         dto.setDuration(interview.getDuration());
         dto.setInterviewType(interview.getInterviewType());
-        dto.setTopicsJson(interview.getTopicsJson()); // <-- UPDATED from generatedQuestions
+        dto.setTopicsJson(interview.getTopicsJson());
 
-        // Map associated User to safe DTO
         UserResponseDto userDto = new UserResponseDto();
         if (interview.getUser() != null) {
             userDto.setId(interview.getUser().getId());

@@ -20,10 +20,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Optional;
 
 /**
  * Service class for handling user-related business logic, including registration,
  * authentication, and loading user details for Spring Security.
+ * (Updated to support OAuth2 user processing)
  */
 @Service
 public class UserService implements UserDetailsService {
@@ -44,12 +46,8 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Registers a new user in the system.
-     * It checks if the email is already in use, hashes the password, and saves the new user to the database.
-     *
-     * @param userDto DTO containing new user details (fullName, email, password).
-     * @return The saved User entity.
-     * @throws IllegalStateException if the email is already registered.
+     * Registers a new user in the system (Password-based).
+     * (No changes here)
      */
     public User registerUser(UserDto userDto) {
         log.info("Attempting to register user with email: {}", userDto.getEmail());
@@ -67,10 +65,8 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Authenticates a user and generates a JWT token upon successful login.
-     *
-     * @param loginDto DTO containing user's email and password.
-     * @return A JWT token string for the authenticated user.
+     * Authenticates a password-based user and generates a JWT token.
+     * (No changes here)
      */
     public String loginUser(LoginDto loginDto) {
         log.info("Attempting to authenticate user: {}", loginDto.getEmail());
@@ -86,12 +82,41 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Loads a user's details by their email address.
-     * This method is required by Spring Security's UserDetailsService interface.
+     * Finds or creates a user based on Google OAuth2 login.
+     * If the user does not exist, a new account is created.
      *
-     * @param email The email of the user to load.
-     * @return A UserDetails object containing user information.
-     * @throws UsernameNotFoundException if no user is found with the given email.
+     * @param email The email received from Google.
+     * @param name  The full name received from Google.
+     */
+    public void processOAuthUser(String email, String name) {
+        log.info("Processing OAuth2 user: {}", email);
+        Optional<User> userOptional = userRepository.findByEmail(email);
+
+        if (userOptional.isPresent()) {
+
+            log.info("OAuth2 user already exists in database: {}", email);
+            User user = userOptional.get();
+            if (name != null && !name.equals(user.getFullName())) {
+                user.setFullName(name);
+                userRepository.save(user);
+                log.info("Updated user's full name from Google: {}", email);
+            }
+        } else {
+            log.info("OAuth2 user not found. Creating new user: {}", email);
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setFullName(name);
+            newUser.setPassword(passwordEncoder.encode("OAUTH2_USER_NO_PASSWORD"));
+
+            userRepository.save(newUser);
+            log.info("New OAuth2 user created successfully: {}", email);
+        }
+    }
+
+
+    /**
+     * Loads a user's details by their email address (for Spring Security).
+     * (No changes here)
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -107,18 +132,13 @@ public class UserService implements UserDetailsService {
 
 
     /**
-     * Retrieves the non-sensitive details of a user by their email address.
-     * Used to fetch profile information for the currently logged-in user.
-     *
-     * @param email The email address of the user to fetch.
-     * @return A {@link UserResponseDto} containing the user's ID, full name, and email.
-     * @throws UsernameNotFoundException if no user is found with the given email.
+     * Retrieves the non-sensitive details of a user by their email.
+     * (No changes here)
      */
     public UserResponseDto getUserDetailsByEmail(String email) {
         log.debug("Fetching user details for email: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
-                    // Log error before throwing exception
                     log.error("User details requested for non-existent email: {}", email);
                     return new UsernameNotFoundException("User not found with email: " + email);
                 });

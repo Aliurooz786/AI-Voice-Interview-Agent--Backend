@@ -84,7 +84,7 @@ public class GeminiService {
         }
     }
 
-    // --- Private Helper Methods ---
+
 
     /**
      * Helper method to read a prompt file from the classpath.
