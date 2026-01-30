@@ -16,7 +16,7 @@ Its primary role is to:
 
 ---
 
-## ✨ Features
+##  Features
 
 * **Secure Authentication:** Full stateless JWT-based authentication (`/register`, `/login`).
 * **Google OAuth2 Integration:** Seamless Google Sign-In flow that validates the user and returns a JWT token for stateless session management.
@@ -26,7 +26,7 @@ Its primary role is to:
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 * **Core:** Java 17, Spring Boot 3.2.5
 * **Security:** Spring Security, JWT (jjwt-api), Google OAuth2 Client
@@ -36,7 +36,7 @@ Its primary role is to:
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### 1. Prerequisites
 
@@ -54,26 +54,22 @@ Its primary role is to:
     ```
     (The `spring.jpa.hibernate.ddl-auto=update` property will automatically create the tables on first run.)
 
-### 3. Configuration (Sabse Zaroori)
+### 3. Configuration
 
-Aapki sensitive keys (database password, API keys) ko version control (Git) se bahar rakhna zaroori hai.
 
-1.  `src/main/resources/` folder me jaayein.
-2.  Aapki `application.properties` file ko **chhod kar**, ek nayi file banayein jiska naam **`secrets.properties`** ho.
-3.  Is `secrets.properties` file me apni saari keys daalein:
 
     ```properties
     # src/main/resources/secrets.properties
     # YEH FILE .GITIGNORE ME HONI CHAHIYE
 
     # JWT Secret
-    jwt.secret.key=babue_IsTheSecretFor_MyAiVoiceAgent_Project!@2025#$
+    jwt.secret.key=null
     
     # Database Password
-    spring.datasource.password=ePciaE@12
+    spring.datasource.password=null
     
     # External API Keys
-    gemini.api.key=AIzaSyCce3utZ0IlzO5_0t9d4QBPF7Ijb-SkhRI
+    gemini.api.key=null
     
     # Google OAuth2 Secrets
     spring.security.oauth2.client.registration.google.client-id=YOUR_GOOGLE_CLIENT_ID
